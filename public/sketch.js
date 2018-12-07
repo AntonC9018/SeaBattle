@@ -21,9 +21,10 @@ var createSketch = function() {
       // hint the form of the future ship while making it
       p.shipSilhouette = null;
       p.drawSilhouette = false;
+
       p.createCanvas(WIDTH * SIZE + 1 + p.offSet[0], HEIGHT * SIZE + 1 + p.offSet[1]);
       p.ingame = false;
-      document.getElementById('btn').addEventListener('click', function(event) {
+      document.querySelector('.start').addEventListener('click', function(event) {
         p.ingame = true; // change game state when button is clicked
       })
     }

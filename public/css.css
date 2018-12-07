@@ -1,0 +1,25 @@
+canvas {
+  margin-right: 10px;
+  float: left;
+  margin-bottom: 5px;
+}
+* {
+  padding: 0;
+  margin: 0;
+}
+body {
+  padding: 10px;
+}
+.button {
+  width: 100px;
+  height: 50px;
+  font-size: 25px;
+}
+button.start {
+  border-color: rgb(250, 206, 19);
+  background-color: rgb(250, 206, 19);
+}
+button.pass {
+  border-color: rgb(250, 206, 19);
+  background-color: rgb(250, 206, 19);
+}

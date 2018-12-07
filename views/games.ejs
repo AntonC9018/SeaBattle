@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="games.css">
+  </head>
+  <body>
+    <ul>
+      <% games.forEach(function(game) { %>
+      <li>
+        <div>
+          <%= game.players[0] %> vs <%= game.players[1] %><br>
+          turn: <%= game.turn %><br>
+          the player <%= game.players[game.initiative ? 0 : 1] %> has initiative
+        </div>
+      </li>
+      <% }); %>
+    </ul>
+  </body>
+</html>
