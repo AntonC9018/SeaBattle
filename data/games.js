@@ -13,7 +13,8 @@ module.exports = function(db) {
             turn: 0,
             initiative: 0, // 0 is first player 1 second
             request: null,
-            respond: null
+            respond: null,
+            start: Date.now()
           });
           game.save((err, g) => {
             this.runningGames.push(g._id.toString());
@@ -50,8 +51,8 @@ module.exports = function(db) {
         })
     },
 
-    getGame: function(ID) {
-      let id = ID.toString();
+    getGame: function(id) {
+      id = id.toString();
       let done = false;
       let curr = this.runningGames;
 
@@ -71,9 +72,11 @@ module.exports = function(db) {
       })
     },
 
-    respond: function(ID, respond) {
+    inter: function(id, inter) {
 
-      let id = ID.toString();
+      let type = inter.type;
+      let body = inter.body;
+      id = id.toString();
       let done = false;
       let curr = this.runningGames;
 
@@ -81,37 +84,40 @@ module.exports = function(db) {
         for (let i = 0; i < curr.length; i++) {
           if (curr[i] == id) {
             done = true;
+            let data = {};
+            data[type] = body;
             Game.findOneAndUpdate({ '_id': id },
-              { respond: respond },
+              data,
               function(err, res) {
                 resolve(res);
                 if (err) reject(err);
               })
           }
         }
+        if (!done) resolve(null);
       })
     },
 
-    request: function(ID, request) {
+    wait: function(id) {
 
     },
 
-    dump: function() {
+    list: function() {
       return new Promise((resolve, reject) => {
-        console.log('dump ');
-        let result = [];
-        let curr = this.runningGames;
 
-        this._dump(0, result)
-          .then(function(data) {
-            // console.log(data);
-            resolve(data);
-          })
+        if (this.runningGames.length === 0) {
+          resolve(null)
+        } else {
+          this._list(0, [])
+            .then(function(data) {
+              resolve(data);
+            })
+        }
       })
     },
 
     // Recursive function
-    _dump: function(index, result) {
+    _list: function(index, result) {
       return new Promise((resolve, reject) => {
         Game.findOne({
           '_id': this.runningGames[index]
@@ -119,9 +125,9 @@ module.exports = function(db) {
           result.push(res);
 
           if (index === this.runningGames.length - 1) {
-            resolve();
+            resolve(result);
           } else {
-            this._dump(index + 1, result).then(data => {
+            this._list(index + 1, result).then(data => {
               resolve(result);
               if (err) reject(err);
             });
@@ -130,8 +136,30 @@ module.exports = function(db) {
       })
     },
 
+    name: function(name) {
+
+    },
+
     debug: function() {
       console.log(this.runningGames);
+    },
+
+    restore: function() {
+      Game.find({}, (err, data) =>
+      data.forEach(val => this.runningGames.push(val._id.toString())))
+    },
+
+    drop: function(db) {
+      db.collections.games.drop();
+    },
+
+    pass: function(id, ini) {
+      if (this.runningGames.includes(id)) {
+        Game.findOneAndUpdate({ '_id': id }, { initiative: ini },
+        err, res => {
+          return res ? true : false;
+        })
+      }
     }
   }
 }

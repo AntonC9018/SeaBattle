@@ -3,7 +3,7 @@ const Schema = mongoose.Schema;
 const GameSchema = new Schema({
   players: [String], // nicknames
   turn: Number,
-  initiative: Boolean, // 0 is first player 1 second
+  initiative: Number, // 0 is first player 1 second
   // dynamic: {
     request: {
       // to: String,
@@ -17,7 +17,8 @@ const GameSchema = new Schema({
       // to: String,
       // from: String,
       // hit: Boolean
-    }
+    },
+  start: Number
   // }
 });
 const game = mongoose.model('game', GameSchema);

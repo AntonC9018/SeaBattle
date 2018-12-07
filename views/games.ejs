@@ -5,15 +5,18 @@
   </head>
   <body>
     <ul>
+      <% if (games) { %>
       <% games.forEach(function(game) { %>
       <li>
         <div>
           <%= game.players[0] %> vs <%= game.players[1] %><br>
           turn: <%= game.turn %><br>
-          the player <%= game.players[game.initiative ? 0 : 1] %> has initiative
+          the player <%= game.players[game.initiative ? 0 : 1] %> has initiative<br>
+          id: <span style="font-size:25px"><%= game.id %></span>
         </div>
       </li>
-      <% }); %>
+      <% });}; %>
+
     </ul>
   </body>
 </html>
