@@ -9,14 +9,19 @@
       <% games.forEach(function(game) { %>
       <li>
         <div>
-          <%= game.players[0] %> vs <%= game.players[1] %><br>
+          <span style="color:red"><%= game.players[0] %></span> vs
+          <span style="color:blue"><%= game.players[1] %></span><br>
           turn: <%= game.turn %><br>
-          the player <%= game.players[game.initiative ? 0 : 1] %> has initiative<br>
-          id: <span style="font-size:25px"><%= game.id %></span>
+          the player <span style="color:yellow"><%= game.players[game.initiative ? 0 : 1] %></span> has initiative<br>
+          id: <span style="font-size:25px;font-style:italic"><%= game.id %></span><br>
+          time live: <span class="time" style="display:none"><%= game.start %></span>
         </div>
       </li>
       <% });}; %>
 
     </ul>
   </body>
+  <script src="controlTime.js">
+
+  </script>
 </html>

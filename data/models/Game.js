@@ -13,7 +13,7 @@ const GameSchema = new Schema({
       //   y: Number
       // }
     },
-    respond: {
+    response: {
       // to: String,
       // from: String,
       // hit: Boolean

@@ -3,6 +3,8 @@ module.exports = function(db) {
   return {
     // db: db,
     runningGames: [],
+
+    // new game (games)
     game: function() {
 
       return new Promise((resolve, reject) => {
@@ -13,8 +15,8 @@ module.exports = function(db) {
             turn: 0,
             initiative: 0, // 0 is first player 1 second
             request: null,
-            respond: null,
-            start: Date.now()
+            response: null,
+            start: ~~Date.now()
           });
           game.save((err, g) => {
             this.runningGames.push(g._id.toString());
@@ -72,6 +74,7 @@ module.exports = function(db) {
       })
     },
 
+    // save requests of responses to db
     inter: function(id, inter) {
 
       let type = inter.type;
@@ -98,10 +101,7 @@ module.exports = function(db) {
       })
     },
 
-    wait: function(id) {
-
-    },
-
+    // return all running games
     list: function() {
       return new Promise((resolve, reject) => {
 
@@ -116,7 +116,7 @@ module.exports = function(db) {
       })
     },
 
-    // Recursive function
+    // auxiliary recursive function
     _list: function(index, result) {
       return new Promise((resolve, reject) => {
         Game.findOne({
@@ -136,14 +136,8 @@ module.exports = function(db) {
       })
     },
 
-    name: function(name) {
-
-    },
-
-    debug: function() {
-      console.log(this.runningGames);
-    },
-
+    // rerun all games saved to db
+    // useful at server restart
     restore: function() {
       Game.find({}, (err, data) =>
       data.forEach(val => this.runningGames.push(val._id.toString())))
@@ -153,12 +147,16 @@ module.exports = function(db) {
       db.collections.games.drop();
     },
 
+    // end request-respond cycle
     pass: function(id, ini) {
+      console.log('Passing initiative to player ' + ini);
       if (this.runningGames.includes(id)) {
-        Game.findOneAndUpdate({ '_id': id }, { initiative: ini },
-        err, res => {
-          return res ? true : false;
-        })
+        Game.findOne({ '_id': id }, (err, res) => {
+          Game.findOneAndUpdate({ '_id': id },
+          { initiative: ini, response: null, request: null, turn: res.turn++ },
+          (err, res) => {
+          })
+        });
       }
     }
   }
