@@ -16,9 +16,11 @@ app.set('view engine', 'ejs')
 
 // player waiting for response
 // wait for hit info and get it
-app.get('/games/resp/:id/:name', function(req, res) {
+app.get('/games/res/:id/:name', function(req, res) {
   let id = req.params.id;
   let name = req.params.name;
+
+  console.log('player ' + name + ' waiting for response');
 
   play.getGame(id).then((r) => {
 
@@ -45,7 +47,7 @@ app.get('/games/resp/:id/:name', function(req, res) {
             let rt = r.response;
             if (rt && rt.from != name) {
               clearInterval(t);
-              res.end(rt.hit);
+              res.end('#' + rt.hit);
               play.pass(id, r.players[0] == name ? 1 : 0);
               return;
             }
@@ -58,10 +60,12 @@ app.get('/games/resp/:id/:name', function(req, res) {
 
 
 // player sending a response
-app.get('/games/resp/:id/:name/:hit', function(req, res) {
+app.get('/games/res/:id/:name/:hit', function(req, res) {
   let id = req.params.id;
   let name = req.params.name;
   let hit = req.params.hit;
+
+  console.log('player ' + name + ' sending a response');
 
   play.getGame(id).then(function(r) {
 
@@ -96,6 +100,8 @@ app.get('/games/req/:id/:name/:x/:y', function(req, res) {
   let x = req.params.x;
   let y = req.params.y;
 
+  console.log('player ' + name + ' sending a request');
+
   play.getGame(id).then((r) => {
 
     // Validation
@@ -128,6 +134,8 @@ app.get('/games/req/:id/:name/:x/:y', function(req, res) {
 app.get('/games/req/:id/:name', function(req, res) {
   let id = req.params.id;
   let name = req.params.name;
+
+  console.log('player ' + name + ' waiting for request');
 
   play.getGame(id).then((r) => {
 
@@ -189,7 +197,6 @@ app.get('/games/new/:name', function(req, res) {
 // list the games running
 app.get('/games', function(req, res) {
   play.list().then((data) => {
-    console.log(data);
     res.render('games.ejs', { games: data });
   })
 })

@@ -16,7 +16,7 @@ module.exports = function(db) {
             initiative: 0, // 0 is first player 1 second
             request: null,
             response: null,
-            start: ~~Date.now()
+            start: Date.now()
           });
           game.save((err, g) => {
             this.runningGames.push(g._id.toString());
@@ -151,12 +151,10 @@ module.exports = function(db) {
     pass: function(id, ini) {
       console.log('Passing initiative to player ' + ini);
       if (this.runningGames.includes(id)) {
-        Game.findOne({ '_id': id }, (err, res) => {
           Game.findOneAndUpdate({ '_id': id },
-          { initiative: ini, response: null, request: null, turn: res.turn++ },
+          { initiative: ini, response: null, request: null, $inc: { turn: 1 } },
           (err, res) => {
           })
-        });
       }
     }
   }
