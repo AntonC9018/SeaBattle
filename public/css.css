@@ -36,3 +36,13 @@ button.pass {
     rgba(223,229,215,1) 100%,
     rgba(179,190,173,1) 100%);
 }
+
+#change-state.ready {
+  background-color: rgb(74, 79, 198);
+  border-color: rgb(74, 79, 198);
+}
+
+#change-state.waiting {
+  background-color: rgb(12, 187, 19);
+  border-color: rgb(12, 187, 19);
+}

@@ -3,15 +3,25 @@ const app = express();
 const db = require('./data/connection.js');
 const port = 3000;
 const play = require('./data/games.js')();
-// const ejs = require('ejs')
 
 var queue = [];
 var resp;
 
-play.restore();
-// play.drop(db)
+var timeout = require('connect-timeout');
+
+app.use(timeout(120000));
+app.use(haltOnTimedout);
+
+function haltOnTimedout(req, res, next){
+  if (!req.timedout) next();
+}
+
+//play.restore();
+play.drop(db)
 
 app.use(express.static(__dirname + '/public'))
+
+
 app.set('view engine', 'ejs')
 
 // player waiting for response
@@ -186,6 +196,7 @@ app.get('/games/new/:name', function(req, res) {
     queue.push(req.params.name)
     let t = setInterval(function() {
       if (resp) { // you were added to a game
+        queue.splice(0, 1);
         clearInterval(t);
         res.end('#' + resp.toString() + ',0'); // send id to client
         // 0 means it goes first
@@ -200,5 +211,16 @@ app.get('/games', function(req, res) {
     res.render('games.ejs', { games: data });
   })
 })
-
+// const http = require('http')
+// try {
+//   http.createServer(app).listen(3330)
+// } catch (err) {
+//   console.log(err);
+// }
 app.listen(port, () => console.log(`App listening on port ${port}.`))
+//188.244.22.148
+
+
+setInterval(function() {
+  console.log(queue);
+}, 3000)
