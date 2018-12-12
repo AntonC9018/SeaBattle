@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express();
 const db = require('./data/connection.js');
-const port = 3000;
+const port = process.env.PORT || 8080;
 const play = require('./data/games.js')();
 
 var queue = [];
