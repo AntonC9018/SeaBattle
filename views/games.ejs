@@ -9,10 +9,10 @@
       <% games.forEach(function(game) { %>
       <li>
         <div>
-          <span style="color:red"><%= game.players[0] %></span> vs
-          <span style="color:blue"><%= game.players[1] %></span><br>
+          <span style="color:red"><%= game.players[0].slice(8) %></span> vs
+          <span style="color:blue"><%= game.players[1].slice(8) %></span><br>
           turn: <%= game.turn %><br>
-          the player <span style="color:yellow"><%= game.players[game.initiative ? 0 : 1] %></span> has initiative<br>
+          the player <span style="color:yellow"><%= game.players[game.initiative ? 0 : 1].slice(8) %></span> has initiative<br>
           id: <span style="font-size:25px;font-style:italic"><%= game.id %></span><br>
           time live: <span class="time" style="display:none"><%= game.start %></span>
         </div>

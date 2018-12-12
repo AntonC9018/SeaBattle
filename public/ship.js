@@ -32,7 +32,7 @@ class Ship {
     if (!this.silhouette) {
       p.fill(81, 226, 30);
     } else {
-      // this last 80 stands for transparancy (alpha)
+      // this last 80 stands for transparency (alpha)
       p.fill(81, 226, 30, 80);
     }
 
@@ -50,11 +50,14 @@ class Ship {
       p.endShape(p.CLOSE);
     }
 
+
+    p.noFill();    
+    p.stroke(184, 23, 23);
+    p.strokeWeight(3);
+
     for (let po of this.pos) {
       // cross out dead cells
       if (!po.alive) {
-        p.stroke(184, 23, 23);
-        p.strokeWeight(3);
         p.line(po.x + SM, po.y + SM,
           po.x + SIZE - SM, po.y + SIZE - SM);
         p.line(po.x + SIZE - SM, po.y + SM,

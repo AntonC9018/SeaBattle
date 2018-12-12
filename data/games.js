@@ -21,12 +21,12 @@ module.exports = function(db) {
           game.save((err, g) => {
             this.runningGames.push(g._id.toString());
             resolve(g._id.toString());
-            if (err) resolve(err);
+            if (err) reject(err);
           })
 
         } else {
           this._game(Array.from(arguments))
-            .then((res) => resolve(res))
+            .then(res => resolve(res))
         }
       })
     },
@@ -74,7 +74,7 @@ module.exports = function(db) {
       })
     },
 
-    // save requests of responses to db
+    // save requests or responses to db
     inter: function(id, inter) {
 
       let type = inter.type;
@@ -149,13 +149,36 @@ module.exports = function(db) {
 
     // end request-respond cycle
     pass: function(id, ini) {
-      console.log('Passing initiative to player ' + ini);
-      if (this.runningGames.includes(id)) {
+
+      return new Promise((resolve, reject) => {
+
+        console.log('Passing initiative to player ' + ini);
+
+        if (this.runningGames.includes(id)) {
+            Game.findOneAndUpdate({ '_id': id },
+            { initiative: ini, $inc: { turn: 1 } },
+            (err, res) => {
+              if (!err) resolve(res)
+              else reject(err)
+            })
+        }
+      })
+    },
+
+    clear: function(id) {
+      return new Promise((resolve, reject) => {
+
+        console.log('Removing responses and requests');
+
+        if (this.runningGames.includes(id)) {
           Game.findOneAndUpdate({ '_id': id },
-          { initiative: ini, response: null, request: null, $inc: { turn: 1 } },
+          { response: null, request: null },
           (err, res) => {
+            if (!err) resolve(res)
+            else reject(err)
           })
-      }
+        }
+      })
     }
   }
 }

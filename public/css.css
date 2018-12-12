@@ -1,4 +1,4 @@
-canvas {
+#sk1 canvas, #sk2 canvas {
   margin-right: 10px;
   float: left;
   margin-bottom: 5px;
@@ -45,4 +45,23 @@ button.pass {
 #change-state.waiting {
   background-color: rgb(12, 187, 19);
   border-color: rgb(12, 187, 19);
+}
+
+.hidden {
+  display: none;
+}
+
+#sk3.waiting, #sk3.ready, #sk3.fail {
+  background-color: rgb(168, 168, 168, 0.5);
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  top: 0;
+  left: 0;
+}
+#sk1, #sk2 {
+  float: left;
+}
+#enemy.nick {
 }

@@ -1,4 +1,4 @@
-const SIZE = 30;
+const SIZE = 35;
 const OFFSET = SIZE / 8;
 const HALFSIZE = SIZE / 2;
 const WIDTH = 10;
@@ -9,7 +9,7 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
 
   return function(p) {
     p.setup = function() {
-      p.offSet = [30, 30]; // offset of the grid off left and top
+      p.offSet = [0, 0]; // offset of the grid off left and top
 
       p.drawGrid = function() {
         p.translate(p.offSet[0], p.offSet[1]);
@@ -266,6 +266,8 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
 
         // create half-transparent ship silhouette (while making a ship)
         p.drawSilhouette(x, y);
+
+        p.noStroke();
 
         // Hovering
         if (x <= WIDTH && y <= HEIGHT &&

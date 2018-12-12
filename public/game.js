@@ -8,45 +8,15 @@ var enemyNavy;
 var awaitingReq = false;
 var awaitingRes = false;
 
+function salt() {
+  return Math.random().toString(36).substr(2, 8);
+}
 
  // at start
 {
   myNavy = new p5(sketch(true), window.document.getElementById('sk1'));
-  document.querySelector('.nick').innerHTML = Math.random().toString(36).substr(2, 5);
+  //document.querySelector('.nick').innerHTML = salt();
   document.querySelector('.start').addEventListener('click', start);
-}
-
-function board() {
-  enemyNavy = new p5(sketch(false), window.document.getElementById('sk2'));
-}
-
-function start() {
-
-  let el = document.querySelector('.nick');
-  el.setAttribute('contenteditable', 'false');
-  nick = el.innerHTML;
-
-  this.removeEventListener('click', start);
-  ingame = true; // change game state when button is clicked
-
-  let xhttp = new XMLHttpRequest();
-
-  xhttp.onreadystatechange = function() {
-    if (this.readyState == 4 && this.status == 200) {
-      if (this.responseText.charAt(0) === '#') {
-         let s = this.responseText.slice(1);
-         let a = s.split(',');
-         console.log(a);
-         id = a[0].toString();
-         initiative = parseInt(a[1]);
-         if (initiative === 1) awaitReqRespond();
-         board();
-      }
-    }
-  }
-
-  xhttp.open("GET", "games/new/" + nick, true);
-  xhttp.send();
 }
 
 
@@ -59,35 +29,49 @@ function cycle(i, j) {
   }
   console.log('start chain');
 
-  // chain full request-respond cycle !!!
-
-
-  // send request
-  request(i, j).then(res => {
-    console.log('Request successful.');
-
-
-    // wait for respond
-    awaitRes().then(res => {
-      console.log('Response acquired: ' + res);
-      if (res === 'true') { // it hit a ship
-        console.log('A ship has been hit!');
-        initiative = 1;
-        enemyNavy.cells[i][j] = 2;
-      } else if (res === 'false') { // it hit an empty space
-        console.log('An empty space has been hit!');
-        initiative = 1;
-        enemyNavy.cells[i][j] = 1;
-      } else {
-        console.log('error: ' + res);
-      }
-
-      // wait for request and respond
-      awaitReqRespond();
-
-    }).catch(err => console.log('An error occured while waiting for respond: ' + err + '. The cycle has been stopped unexpectedly'))
-  }).catch(err => console.log('An error occured while sending request: ' + err + '. The cycle has been stopped unexpectedly'))
+      // chain full request-respond cycle !!!
+      requestAwaitRes(i, j).then(r => {
+        if (r) return;
+        else {
+          // wait for request and respond
+          awaitReqRespond();
+        }
+      }).catch(err => console.log('An error occured while waiting for respond: ' + err + '. The cycle has been stopped unexpectedly'));
 }
+
+function requestAwaitRes(i, j) {
+
+  return new Promise(function(resolve, reject) {
+    // send request
+    request(i, j).then(res => {
+      console.log('Request successful.');
+
+
+      // wait for response
+      awaitRes().then(res => {
+        console.log('Response acquired: ' + res);
+
+        if (res === 'true') { // it hit a ship
+          console.log('A ship has been hit!');
+          initiative = 0;
+          enemyNavy.cells[i][j] = 2;
+          resolve(true);
+
+        } else if (res === 'false') { // it hit an empty space
+          console.log('An empty space has been hit!');
+          initiative = 1;
+          enemyNavy.cells[i][j] = 1;
+          resolve(false);
+
+        } else {
+          console.log('error: ' + res);
+          reject(res)
+        }
+      }).catch(r => console.log('An error occured while waiting for response. Error: ' + r))
+    }).catch(r => console.log('An error occured while requesting. Error: ' + r))
+  })
+}
+
 
 // These functions are key for player-server interactions
 function request(x, y) {
@@ -99,10 +83,11 @@ function request(x, y) {
 
     xhttp.onreadystatechange = function() {
       if (this.readyState == 4 && this.status == 200) {
-        if (this.responseText === 'success') {
-          resolve(this.responseText);
+        let res = JSON.parse(this.responseText);
+        if (res.response) {
+          resolve(res.response);
         } else {
-          reject(this.responseText);
+          reject(res.error);
         }
       }
     }
@@ -121,19 +106,32 @@ function awaitRes() {
       reject('You are waiting for request')
       return;
     }
+
+    changeState('waiting');
+
     console.log('Waiting for response');
     let xhttp = new XMLHttpRequest();
 
     xhttp.onreadystatechange = function() {
       if (this.readyState == 4 && this.status == 200) {
-        if (this.responseText.charAt(0) === '#') {
+
+        let res = JSON.parse(this.responseText);
+
+        if (res.response) {
+
           awaitingRes = false;
-          let s = this.responseText.slice(1);
-          resolve(s);
+
+          if (res.response === 'true') {
+            changeState('ready');
+          } else if (res.response === 'false') {
+            changeState('fail');
+          }
+          resolve(res.response);
+
         } else {
           awaitingRes = false;
-          console.log('error: ' + this.responseText);
-          reject(this.responseText);
+          console.log('error: ' + res.error);
+          reject(res.error);
         }
       }
     }
@@ -145,18 +143,24 @@ function awaitRes() {
 
 function awaitReq() {
   return new Promise(function (resolve, reject) {
-    console.log('waiting for request');
-    _awaitReq().then(function(res) {
-      let x = res[0];
-      let y = res[1];
+    console.log('Checking if respond = null');
+    requestClear().then(r => {
 
-      let effect = myNavy.shoot(x, y).toString();
-      console.log(`Being shot at ${x}, ${y}. The effect: ${effect}`);
-      if (effect !== 'error') {
-        resolve(effect);
-      } else {
-        reject(effect);
-      }
+        console.log('Response = ' + r);
+
+        console.log('waiting for REQUEST');
+        _awaitReq().then(function(res) {
+        let x = res.x;
+        let y = res.y;
+
+        let effect = myNavy.shoot(x, y).toString();
+        console.log(`Being shot at ${x}, ${y}. The effect: ${effect}`);
+        if (effect !== 'error') {
+          resolve(effect);
+        } else {
+          reject(effect);
+        }
+      })
     })
   })
 }
@@ -168,7 +172,7 @@ function _awaitReq() {
   return new Promise(function(resolve, reject) {
 
     if (awaitingRes) {
-      reject('You are waiting for respond!');
+      reject('You are waiting for response!');
       return;
     }
 
@@ -177,14 +181,13 @@ function _awaitReq() {
 
     xhttp.onreadystatechange = function() {
       if (this.readyState == 4 && this.status == 200) {
-        if (this.responseText.charAt(0) === '#') {
+        let res = JSON.parse(this.responseText);
+        if (res.response) {
           awaitingReq = false;
-          let s = this.responseText.slice(1);
-          let a = s.split(',');
-          resolve(a);
+          resolve(res.response.coordinates);
         } else {
           awaitingReq = false;
-          reject(this.responseText);
+          reject(res.error);
         }
       }
     }
@@ -201,10 +204,11 @@ function respond(message) {
 
     xhttp.onreadystatechange = function() {
       if (this.readyState == 4 && this.status == 200) {
-        if (this.responseText === 'success') {
-          resolve(this.responseText);
+        let res = JSON.parse(this.responseText);
+        if (res.response) {
+          resolve(res.response);
         } else {
-          reject(this.responseText);
+          reject(res.error);
         }
       }
     }
@@ -216,14 +220,45 @@ function respond(message) {
 
 function awaitReqRespond() {
   awaitReq().then(effect => {
-    console.log('Request acuired. Responding');
+    console.log('Request acquired. Responding');
 
     respond(effect).then(res => {
-      initiative = 0;
-      console.log('cycle ended!');
+      if (effect === 'true') {
+
+        requestClear().then(r => {
+          if (r) awaitReqRespond();
+        })
+        return;
+      } else {
+        initiative = 0;
+        console.log('cycle ended!');
+      }
+
 
     }).catch(err => console.log('An error occured while responding. ' + err + '. The cycle has been stopped unexpectedly'))
   }).catch(err => console.log('An error occured while waiting for request: ' + err + '. The cycle has been stopped unexpectedly'))
+}
+
+
+function requestClear() {
+return new Promise(function(resolve, reject) {
+
+    let xhttp = new XMLHttpRequest();
+
+    xhttp.onreadystatechange = function() {
+      if (this.readyState == 4 && this.status == 200) {
+        let r = JSON.parse(this.responseText);
+        if (r.response === 'done') {
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      }
+    }
+
+    xhttp.open("GET", `games/clear/${id}` , true);
+    xhttp.send();
+  })
 }
 
 
