@@ -5,15 +5,15 @@ function changeState(state) {
   let cl = el.className;
 
   if (state) {
-    el.className = state;
+    el.className = stateClasses[state];
     stateScreen.reset();
     stateScreen.state = state;
   }
 
-  else if (cl === 'hidden') {
-    el.className = 'waiting';
+  else if (cl === stateClasses[STATE_WAITING]) {
+    el.className = stateClasses[STATE_HIDDEN];
   } else {
-    el.className = 'hidden';
+    el.className = stateClasses[STATE_HIDDEN];
   }
 
 }
@@ -46,7 +46,7 @@ function start() {
   myNavy.shipSilhouette = null;
 
   let enemy = document.getElementById('enemy');
-  enemy.classList.remove('hidden');
+  enemy.classList.remove(stateClasses[STATE_HIDDEN]);
 
   // create board for enemy navy and
   board();
@@ -55,7 +55,7 @@ function start() {
   setOffset();
 
   // let the thing run
-  changeState('waiting');
+  changeState(STATE_WAITING);
 
   // get nick
   let el = document.querySelector('.nick');
@@ -69,6 +69,7 @@ function start() {
 
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
+      console.log(this.responseText);
       let res = JSON.parse(this.responseText);
       if (res.response) {
 
@@ -82,17 +83,17 @@ function start() {
         // if go second, await request and then respond
         if (initiative === 1) awaitReqRespond();
 
-        changeState('ready')
+        changeState(STATE_READY)
       }
     }
   }
 
-  xhttp.open("GET", "games/new/" + nick, true);
-  xhttp.send();
+  xhttp.open("POST", "games", true);
+  xhttp.setRequestHeader("Content-type", "application/json");
+  xhttp.send(JSON.stringify({
+    type: NEW_GAME,
+    query: {
+      name: nick
+    }
+  }));
 }
-// document.getElementById('sk3').addEventListener('click', stopProp);
-// function stopProp(event) {
-//   console.log(event.target);
-//   event.stopPropagation();
-// }
-// document.getElementById('sk2').addEventListener('click', stopProp);

@@ -1,23 +1,31 @@
 const express = require('express');
 const app = express();
+const bodyParser = require('body-parser');
 const db = require('./data/connection.js');
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 3000;
 const play = require('./data/games.js')();
 
 var queue = [];
-var resp = {
-
-};
+var resp = {};
 
 var timeout = require('connect-timeout');
 
-app.use(timeout(1000 * 60 * 300));
+app.use(timeout(1000 * 60 * 20));
 app.use(haltOnTimedout);
-
 
 function haltOnTimedout(req, res, next) {
   if (!req.timedout) next();
+  console.log('timeout');
 }
+
+// parse application/x-www-form-urlencoded
+app.use(bodyParser.urlencoded({
+  extended: false
+}))
+
+// parse application/json
+app.use(bodyParser.json());
+
 
 //play.restore();
 play.drop(db)
@@ -27,11 +35,58 @@ app.use(express.static(__dirname + '/public'))
 
 app.set('view engine', 'ejs')
 
+
+
+const REQ_IN = 0
+REQ_OUT = 1
+RES_IN = 2
+RES_OUT = 3
+CLEAR = 4
+NEW_GAME = 5;
+
+// This way is more understandable for me
+// Same thing could've been done with a router
+app.post('/games', function(req, res, next) {
+  let r = req.body;
+
+  console.log('In router. Data: ');
+  console.log(r);
+
+  switch (r.type) {
+    case REQ_IN:
+      reqIn(r.query, res);
+      break;
+
+    case REQ_OUT:
+      reqOut(r.query, res);
+      break;
+
+    case RES_IN:
+      resIn(r.query, res);
+      break;
+
+    case RES_OUT:
+      resOut(r.query, res);
+      break;
+
+    case CLEAR:
+      clear(r.query, res);
+      break;
+
+    case NEW_GAME:
+      game(r.query.name, res);
+      break;
+
+    default:
+      res.end('{"error":"Invalid route parameters"}');
+  }
+})
+
 // player waiting for response
 // wait for hit info and get it
-app.get('/games/res/:id/:name', function(req, res) {
-  let id = req.params.id;
-  let name = req.params.name;
+function resOut(req, res) {
+  let id = req.id;
+  let name = req.name;
 
   console.log('player ' + name.slice(8) + ' waiting for response');
 
@@ -45,22 +100,12 @@ app.get('/games/res/:id/:name', function(req, res) {
     else if (r.request && r.request.from != name) answer.error = 'send request'
     else {
       let i = r.players[0] == name ? 0 : 1;
-      console.log('The player that has initiative: ' +
-        r.players[parseInt(r.initiative)].slice(8));
       if (r.initiative != i) answer.error = 'not your turn'
       else {
 
-
-        console.log('calling _endResponse');
-
         // No discrepancy found (data is valid)
         _endResponse(id, name, res, r).then(r => {
-          console.log('_endResponse!');
-          if (r) {
-            console.log('_endResponse response: ' + r);
-            return;
-
-          }
+          if (r) return;
           else {
 
             // Repeat without the check (validation)
@@ -84,55 +129,40 @@ app.get('/games/res/:id/:name', function(req, res) {
       res.end(JSON.stringify(answer));
     }
   })
-})
+}
 
 function _endResponse(id, name, res, r) {
-
-  console.log('in _endResponse');
 
   return new Promise(function(resolve, reject) {
 
     let rp = r.response;
-    console.log('Response so far: ');
-    console.log(rp);
     if (rp && rp.from != name) {
 
-      console.log('Response after: ');
-      console.log(rp);
-      let y = rp['hit'] == 'true';
-      console.log('VALUE true: ', y);
-      console.log('VALUE false: ', !y);
+      let skip = function(id, answer) {
+        play.clear(id);
 
-      if (!y) {
-        console.log('A ship not hit');
-        let i = r.players[0] == name ? 1 : 0;
-        console.log('Player ' + name.slice(8) + ' responds');
-        console.log('Passing initiative to player ' + r.players[i].slice(8));
-        play.pass(id, i).then(r => {
-          play.getGame(id).then(r => {
-            console.log('GetGame: ' + r);
-
-            play.clear(id);
-
-            answer.response = rp.hit;
-            res.end(JSON.stringify(answer));
-            resolve(true);
-
-            })
-          })
-        } else {
-          console.log('A ship hit');
-          play.getGame(id).then(r => {
-            console.log('GetGame: ' + r);
-
-            play.clear(id);
-
-            answer.response = rp.hit;
-            res.end(JSON.stringify(answer));
-            resolve(true);
-          })
+        answer = {
+          response: {
+            hit: rp.hit,
+            kill: rp.kill,
+            win: rp.win
+          }
         }
+        res.end(JSON.stringify(answer));
+        resolve(true);
+      }
+      console.log('Response at _endResponse');
+      console.log(rp);
+
+      if (rp.hit == false) {
+        let i = r.players[0] == name ? 1 : 0;
+        play.pass(id, i).then(r => {
+          skip(id, answer);
+        });
       } else {
+        skip(id, answer);
+      }
+    } else {
       resolve(false)
     }
   })
@@ -140,10 +170,12 @@ function _endResponse(id, name, res, r) {
 
 
 // player sending a response
-app.get('/games/res/:id/:name/:hit', function(req, res) {
-  let id = req.params.id;
-  let name = req.params.name;
-  let hit = req.params.hit;
+function resIn(req, res) {
+  let id = req.id;
+  let name = req.name;
+  let hit = req.hit;
+  let kill = req.kill;
+  let win = req.win;
 
   console.log('player ' + name.slice(8) + ' sending a response');
 
@@ -165,12 +197,12 @@ app.get('/games/res/:id/:name/:hit', function(req, res) {
         type: 'response',
         body: {
           from: name,
-          hit: hit
+          hit,
+          kill,
+          win
         }
       }).then(r => {
-        console.log('saved');
         answer.response = 'success';
-
         res.end(JSON.stringify(answer));
       })
     }
@@ -179,15 +211,15 @@ app.get('/games/res/:id/:name/:hit', function(req, res) {
       res.end(JSON.stringify(answer))
     }
   })
-})
+}
 
 
 // Shoot a tile (send a request)
-app.get('/games/req/:id/:name/:x/:y', function(req, res) {
-  let id = req.params.id;
-  let name = req.params.name;
-  let x = req.params.x;
-  let y = req.params.y;
+function reqIn(req, res) {
+  let id = req.id;
+  let name = req.name;
+  let x = req.x;
+  let y = req.y;
 
   console.log('player ' + name.slice(8) + ' sending a request');
 
@@ -202,7 +234,6 @@ app.get('/games/req/:id/:name/:x/:y', function(req, res) {
     // else if (r.response && r.response.from != name) res.end('response first')
     else {
       let i = r.players[0] == name ? 0 : 1;
-      console.log('The player that has initiative: ' + r.players[i].slice(8));
       if (r.initiative != i) answer.error = 'not your turn'
 
       // send Request
@@ -225,14 +256,14 @@ app.get('/games/req/:id/:name/:x/:y', function(req, res) {
       res.end(JSON.stringify(answer));
     }
   })
-})
+}
 
 
 // Wait for request and get it
 // (Get coordinates of the tile being shot)
-app.get('/games/req/:id/:name', function(req, res) {
-  let id = req.params.id;
-  let name = req.params.name;
+function reqOut(req, res) {
+  let id = req.id;
+  let name = req.name;
 
   console.log('player ' + name.slice(8) + ' waiting for request');
 
@@ -262,8 +293,13 @@ app.get('/games/req/:id/:name', function(req, res) {
           play.getGame(id).then((r) => {
 
             if (_endRequest(name, r, res)) {
+              console.log('_endreuet true');
+              console.log('Clearing interval t: ');
               clearInterval(t);
+              console.log(t);
+              console.log('Clearing interval k: ');
               clearInterval(k);
+              console.log(k);
               return;
             }
           })
@@ -275,25 +311,9 @@ app.get('/games/req/:id/:name', function(req, res) {
       res.end(JSON.stringify(answer));
     }
   })
-})
+}
 
-app.get('/games/clear/:id', function(req, res) {
-  let id = req.params.id;
-
-  let t = setInterval(function() {
-
-    play.getGame(id).then(r => {
-
-      if (r && !r.response) {
-        res.end('{"response": "done"}');
-        clearInterval(t);
-      }
-    })
-
-  }, 800)
-})
-
-
+// auxiliary function for reqOut()
 function _endRequest(name, r, res) {
   let rt = r.request;
   if (rt && rt.coordinates && rt.from != name) {
@@ -312,9 +332,29 @@ function _endRequest(name, r, res) {
 }
 
 
+// This one is necessary to make sure the enemy received the response
+// (Responses and requests are cleared on receiving responses)
+function clear(req, res) {
+  let id = req.id;
+
+  let t = setInterval(function() {
+
+    play.getGame(id).then(r => {
+
+      if (r && !r.response) {
+        res.end('{"response": "done"}');
+        clearInterval(t);
+      }
+    })
+
+  }, 800)
+}
+
+
+
 // Register a new game
-app.get('/games/new/:name', function(req, res) {
-  console.log('Player ' + req.params.name.slice(8) + ' waiting for game');
+function game(name, res) {
+  console.log('Player ' + name.slice(8) + ' waiting for game');
 
   let answer = {};
 
@@ -326,9 +366,9 @@ app.get('/games/new/:name', function(req, res) {
     }
     let enemyName = queue[0];
 
-    queue.push(req.params.name);
+    queue.push(name);
 
-    play.game([enemyName, req.params.name])
+    play.game([enemyName, name])
       .then(function(id) {
 
         resp[enemyName] = id.toString();
@@ -347,10 +387,10 @@ app.get('/games/new/:name', function(req, res) {
       .catch(err => console.log('Error: ' + err));
 
   } else {
-    console.log(req.params.name);
-    queue.push(req.params.name)
+    console.log(name);
+    queue.push(name)
     let t = setInterval(function() {
-      if (resp[req.params.name]) { // you were added to a game
+      if (resp[name]) { // you were added to a game
 
         clearInterval(t);
 
@@ -358,7 +398,7 @@ app.get('/games/new/:name', function(req, res) {
 
         // set answer values
         answer.response = {
-          id: resp[req.params.name],
+          id: resp[name],
           enemyName: enemyName,
           initiative: 0
         };
@@ -369,7 +409,7 @@ app.get('/games/new/:name', function(req, res) {
       }
     }, 100)
   }
-})
+}
 
 // list the games running
 app.get('/games', function(req, res) {

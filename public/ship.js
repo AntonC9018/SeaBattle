@@ -51,7 +51,7 @@ class Ship {
     }
 
 
-    p.noFill();    
+    p.noFill();
     p.stroke(184, 23, 23);
     p.strokeWeight(3);
 
@@ -67,12 +67,25 @@ class Ship {
   }
   // check is mouse (any coordinate) is inside this ship
   check(x, y) {
+    let dead = true;
+    let result = {
+      hit: false,
+      kill: null,
+      win: false
+    };
     for (let po of this.pos) {
-      if (po.x < x && po.x + SIZE > x
+      if (!result.hit && po.x < x && po.x + SIZE > x
         && po.y < y && po.y + SIZE > y) {
         po.alive = false;
-        return true;
+        result.hit = true;
+        result.kill = { start: this.start, finish: this.finish }
+      } else {
+        if (po.alive) dead = false;
       }
     }
+    if (!dead) {
+      result.kill = null;
+    }
+    return result;
   }
 }

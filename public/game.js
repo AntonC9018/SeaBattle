@@ -8,6 +8,13 @@ var enemyNavy;
 var awaitingReq = false;
 var awaitingRes = false;
 
+const REQ_IN = 0
+REQ_OUT = 1
+RES_IN = 2
+RES_OUT = 3
+CLEAR = 4
+NEW_GAME = 5;
+
 function salt() {
   return Math.random().toString(36).substr(2, 8);
 }
@@ -15,7 +22,6 @@ function salt() {
  // at start
 {
   myNavy = new p5(sketch(true), window.document.getElementById('sk1'));
-  //document.querySelector('.nick').innerHTML = salt();
   document.querySelector('.start').addEventListener('click', start);
 }
 
@@ -31,7 +37,7 @@ function cycle(i, j) {
 
       // chain full request-respond cycle !!!
       requestAwaitRes(i, j).then(r => {
-        if (r) return;
+        if (r.hit) return;
         else {
           // wait for request and respond
           awaitReqRespond();
@@ -49,26 +55,34 @@ function requestAwaitRes(i, j) {
 
       // wait for response
       awaitRes().then(res => {
-        console.log('Response acquired: ' + res);
+        console.log('Response acquired: ');
+        console.log(res);
 
-        if (res === 'true') { // it hit a ship
+        if (res.hit) { // it hit a ship
           console.log('A ship has been hit!');
-          initiative = 0;
+          // initiative = 0;
           enemyNavy.cells[i][j] = 2;
-          resolve(true);
 
-        } else if (res === 'false') { // it hit an empty space
+          if (res.kill) {
+            enemyNavy.kill(res.kill.start, res.kill.finish);
+          }
+          if (res.win) {
+            win();
+          }
+          resolve(res);
+
+        } else if (res.hit === false) { // it hit an empty space
           console.log('An empty space has been hit!');
           initiative = 1;
           enemyNavy.cells[i][j] = 1;
-          resolve(false);
+          resolve(res);
 
         } else {
           console.log('error: ' + res);
           reject(res)
         }
-      }).catch(r => console.log('An error occured while waiting for response. Error: ' + r))
-    }).catch(r => console.log('An error occured while requesting. Error: ' + r))
+      }).catch(err => console.log('An error occured while waiting for response. Error: ' + err))
+    }).catch(err => console.log('An error occured while requesting. Error: ' + err))
   })
 }
 
@@ -92,8 +106,17 @@ function request(x, y) {
       }
     }
 
-    xhttp.open("GET", `games/req/${id}/${nick}/${x}/${y}`, true);
-    xhttp.send();
+    xhttp.open("POST", `games`, true);
+    xhttp.setRequestHeader("Content-type", "application/json");
+    xhttp.send(JSON.stringify({
+      type: REQ_IN,
+      query: {
+        id,
+        name: nick,
+        x,
+        y
+      }
+    }));
   })
 }
 
@@ -107,7 +130,7 @@ function awaitRes() {
       return;
     }
 
-    changeState('waiting');
+    changeState(STATE_WAITING);
 
     console.log('Waiting for response');
     let xhttp = new XMLHttpRequest();
@@ -121,11 +144,13 @@ function awaitRes() {
 
           awaitingRes = false;
 
-          if (res.response === 'true') {
-            changeState('ready');
-          } else if (res.response === 'false') {
-            changeState('fail');
+          if (res.response.hit === true) {
+            changeState(STATE_READY);
+          } else if (res.response.hit === false) {
+            changeState(STATE_FAIL);
           }
+          console.log('The response');
+          console.log(res.response);
           resolve(res.response);
 
         } else {
@@ -136,8 +161,14 @@ function awaitRes() {
       }
     }
 
-    xhttp.open("GET", `games/res/${id}/${nick}` , true);
-    xhttp.send();
+    xhttp.open("POST", `games` , true);
+    xhttp.setRequestHeader("Content-type", "application/json");
+    xhttp.send(JSON.stringify({
+      type: RES_OUT,
+      query: {
+        id, name: nick
+      }
+    }));
   });
 }
 
@@ -146,14 +177,12 @@ function awaitReq() {
     console.log('Checking if respond = null');
     requestClear().then(r => {
 
-        console.log('Response = ' + r);
-
         console.log('waiting for REQUEST');
         _awaitReq().then(function(res) {
         let x = res.x;
         let y = res.y;
 
-        let effect = myNavy.shoot(x, y).toString();
+        let effect = myNavy.shoot(x, y);
         console.log(`Being shot at ${x}, ${y}. The effect: ${effect}`);
         if (effect !== 'error') {
           resolve(effect);
@@ -192,8 +221,14 @@ function _awaitReq() {
       }
     }
 
-    xhttp.open("GET", `games/req/${id}/${nick}` , true);
-    xhttp.send();
+    xhttp.open("POST", `games` , true);
+    xhttp.setRequestHeader("Content-type", "application/json");
+    xhttp.send(JSON.stringify({
+      type: REQ_OUT,
+      query: {
+        id, name: nick
+      }
+    }));
   });
 }
 
@@ -213,8 +248,19 @@ function respond(message) {
       }
     }
 
-    xhttp.open("GET", `games/res/${id}/${nick}/${message}` , true);
-    xhttp.send();
+    xhttp.open("POST", `games` , true);
+    xhttp.setRequestHeader("Content-type", "application/json");
+
+    xhttp.send(JSON.stringify({
+      type: RES_IN,
+      query: {
+        name: nick,
+        id: id,
+        hit: message.hit,
+        kill: message.kill,
+        win: message.win
+      }
+    }));
   });
 }
 
@@ -223,7 +269,7 @@ function awaitReqRespond() {
     console.log('Request acquired. Responding');
 
     respond(effect).then(res => {
-      if (effect === 'true') {
+      if (effect.hit === true) {
 
         requestClear().then(r => {
           if (r) awaitReqRespond();
@@ -256,8 +302,14 @@ return new Promise(function(resolve, reject) {
       }
     }
 
-    xhttp.open("GET", `games/clear/${id}` , true);
-    xhttp.send();
+    xhttp.open("POST", `games` , true);
+    xhttp.setRequestHeader("Content-type", "application/json");
+    xhttp.send(JSON.stringify({
+      type: CLEAR,
+      query: {
+        id
+      }
+    }));
   })
 }
 
@@ -272,4 +324,12 @@ function state() {
 function stop() {
   awaitReq = false;
   awaitRes = false;
+}
+
+function lose() {
+  console.log('done');
+}
+
+function win() {
+  console.log('win');
 }

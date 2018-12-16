@@ -1,7 +1,19 @@
+const STATE_HIDDEN = 0
+STATE_WAITING = 1
+STATE_READY = 2
+STATE_FAIL = 3;
+
+const stateClasses = [
+  'hidden',
+  'waiting',
+  'ready',
+  'fail'
+]
+
 var stateScreen = new p5(function(p) {
     p.setup = function() {
       p.createCanvas(150, 150);
-      p.state = 'hidden';
+      p.state = STATE_HIDDEN;
 
 
       p.CENTRAL = 10;
@@ -40,7 +52,7 @@ var stateScreen = new p5(function(p) {
     p.draw = function() {
       p.clear()
 
-      if (p.state === 'waiting') {
+      if (p.state === STATE_WAITING) {
 
         let residue = (~~p.millis() / (1000) * 60) % (p.MAXSTEP * 2);
         let angle = residue <= p.MAXSTEP ? residue : 2 * p.MAXSTEP - residue;
@@ -73,7 +85,7 @@ var stateScreen = new p5(function(p) {
         p.strokeWeight(2);
         p.ellipse(0, 0, p.CENTRAL, p.CENTRAL);
 
-      } else if (p.state === 'ready') {
+      } else if (p.state === STATE_READY) {
         p.strokeWeight(p.WIDTH);
         p.stroke(51, 157, 25);
 
@@ -94,11 +106,11 @@ var stateScreen = new p5(function(p) {
             p.map(i, p.TICKFIRST, p.TICKCHILL, p.height - p.TICKBOTTOM, p.TICKTOP, true));
 
         if (i >= p.TICKMAX) {
-          changeState('hidden');
+          changeState(STATE_HIDDEN);
           p.TICK = false;
         }
 
-      } else if (p.state === 'fail') {
+      } else if (p.state === STATE_FAIL) {
 
         p.translate(p.CROSSOFFSET, p.CROSSOFFSET);
         p.strokeWeight(p.WIDTH);
@@ -121,12 +133,12 @@ var stateScreen = new p5(function(p) {
         }
 
         if (i >= p.CROSSMAX) {
-          changeState('hidden');
+          changeState(STATE_HIDDEN);
           p.CROSS = false;
         }
       }
     }
-    
+
     p.reset = function() {
       p.TICK = false;
       p.CROSS = false;
