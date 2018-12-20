@@ -5,6 +5,48 @@ const WIDTH = 10;
 const HEIGHT = 10;
 const SM = 5;
 var ingame; // making ships / destroying ships
+var debugMode = true;
+
+const CRITERIA = {
+  '4.1': 1,
+  '3.1': 2,
+  '2.1': 3,
+  '1.1': 4
+}
+
+// const CRITERIA = 'any';
+
+
+function criteria(navy) {
+  if (CRITERIA === 'any') {
+    return 'any';
+  }
+  let current = Object.assign({}, CRITERIA);
+
+  for (let ship of navy) {
+    let width = ship.width();
+    let height = ship.height();
+
+    if (width < height) {
+      let t = width;
+      width = height;
+      height = t;
+    }
+
+    {
+      let newkey = `${width}.${height}`;
+      if (current[newkey] === undefined) {
+        console.log('Not allowed.');
+        return;
+      }
+      current[newkey] --;
+      if (current[newkey] < 0) console.log('Error. Too many ' + newkey + ' ships.');
+    }
+  }
+
+  return current;
+}
+
 var sketch = function(myboard) { // myboard indicates if it is your board or your opponent's
 
   return function(p) {
@@ -28,100 +70,59 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
       }
 
       p.calcAdjacent = function(ship) {
-        console.log('The ship: ');
-        console.log(ship);
-        let inds = ship.inds;
-        console.log('The indeces: ');
-        console.log(inds);
+
         let result = [];
-        if (ship.length === 1) {
-          {
-            let i0 = inds[0];
 
-            let x0 = i0.x > 0;
-            let y0 = i0.y > 0;
-            let xw = i0.x < WIDTH;
-            let yh = i0.y < HEIGHT;
+        let shift = function(obj, i, j) {
+          return([obj.x + i || 0, obj.y + j || 0]);
+        }
 
-            if (x0)       result.push([i0.x - 1, i0.y    ]);
-            if (y0)       result.push([i0.x,     i0.y - 1]);
-            if (x0 && y0) result.push([i0.x - 1, i0.y - 1]);
-            if (xw)       result.push([i0.x + 1, i0.y    ]);
-            if (xw && y0) result.push([i0.x + 1, i0.y - 1]);
-            if (yh)       result.push([i0.x,     i0.y + 1]);
-            if (xw && yh) result.push([i0.x + 1, i0.y + 1]);
-            if (x0 && yh) result.push([i0.x - 1, i0.y + 1]);
+        // shish = shift + push
+        let shish = function(obj, i, j) {
+          result.push(shift(obj, i, j));
+        }
+
+        let shiftAll = function(objs, i, j) {
+          for (let obj of objs) {
+            shish(obj, i, j);
           }
         }
-        else if (ship.h > 1) {
 
-            let x0 = inds[0].x > 0;
-            let xw = inds[0].x < WIDTH;
+        // get outer shape cells of the ship
+        let os = ship.outshape();
 
-            {
-              let i0 = inds[0];
+        // check if an index would be off the screen
+        let x0 = ship.start[0] > 0;
+        let xw = ship.finish[0] < WIDTH;
+        let y0 = ship.start[1] > 0;
+        let yh = ship.finish[1] < HEIGHT;
 
-              let y0 = i0.y > 0;
+        // left and right adjacent cells
+        if (x0) {
+          shiftAll(os.lefts, -1, 0);
+        }
+        if (y0) {
+          shiftAll(os.tops, 0, -1);
+        }
+        if (yh) {
+          shiftAll(os.bots, 0, 1);
+        }
+        if (xw) {
+          shiftAll(os.rights, 1, 0);
+        }
 
-              if (x0)       result.push([i0.x - 1, i0.y    ]);
-              if (y0)       result.push([i0.x,     i0.y - 1]);
-              if (x0 && y0) result.push([i0.x - 1, i0.y - 1]);
-              if (xw)       result.push([i0.x + 1, i0.y    ]);
-              if (xw && y0) result.push([i0.x + 1, i0.y - 1]);
-            }
-
-            {
-              let i1 = inds[inds.length - 1];
-
-              let yh = i1.y < HEIGHT;
-
-              if (x0)       result.push([i1.x - 1, i1.y    ]);
-              if (xw)       result.push([i1.x + 1, i1.y    ]);
-              if (yh)       result.push([i1.x,     i1.y + 1]);
-              if (xw && yh) result.push([i1.x + 1, i1.y + 1]);
-              if (x0 && yh) result.push([i1.x - 1, i1.y + 1]);
-            }
-
-            for (let i = 1; i < inds.length - 1; i++) {
-              if (x0) result.push([inds[i].x - 1, inds[i].y]);
-              if (xw) result.push([inds[i].x + 1, inds[i].y]);
-            }
-          }
-          else if (ship.w > 1) {
-
-
-            let yh = inds[0].y < HEIGHT;
-            let y0 = inds[0].y > 0;
-
-            {
-              let i0 = inds[0];
-
-              let x0 = i0.x > 0;
-
-              if (x0)       result.push([i0.x - 1, i0.y    ]);
-              if (y0)       result.push([i0.x,     i0.y - 1]);
-              if (x0 && y0) result.push([i0.x - 1, i0.y - 1]);
-              if (yh)       result.push([i0.x,     i0.y + 1]);
-              if (x0 && yh) result.push([i0.x - 1, i0.y + 1]);
-          }
-
-          {
-            let i1 = inds[inds.length - 1];
-
-            let xw = inds[0].x < WIDTH;
-
-            if (y0)       result.push([i1.x,     i1.y - 1]);
-            if (xw)       result.push([i1.x + 1, i1.y    ]);
-            if (xw && y0) result.push([i1.x + 1, i1.y - 1]);
-            if (yh)       result.push([i1.x,     i1.y + 1]);
-            if (xw && yh) result.push([i1.x + 1, i1.y + 1]);
-
-          }
-
-          for (let i = 1; i < inds.length - 1; i++) {
-            if (y0) result.push([inds[i].x, inds[i].y - 1]);
-            if (yh) result.push([inds[i].x, inds[i].y + 1]);
-          }
+        // diagonal adjacent cells
+        if (x0 && y0) {
+          shish(os.corns[0], -1, -1); // left top corner
+        }
+        if (xw && y0) {
+          shish(os.corns[1], 1, -1); // right top corner
+        }
+        if (x0 && yh) {
+          shish(os.corns[2], -1,  1); // left bottom corner
+        }
+        if (xw && yh) {
+          shish(os.corns[3], 1,  1); // right bottom corner
         }
 
       return result;
@@ -161,7 +162,7 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
           if (p.shipSilhouette) {
             p.shipSilhouette.show(p);
           }
-          p.fill(6, 167, 109);
+          p.fill(12, 103, 136);
           p.noStroke();
 
           // change color of shot tiles
@@ -174,10 +175,9 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
         // while it is being created
         p.drawSilhouette = function(x, y) {
           if (p.silhouette) {
-            let ends = p.matchEnds([p.shipCreation[0],
-              [x, y]
-            ]);
+            let ends = p.matchEnds([ p.shipCreation[0], [x, y] ]);
             p.shipSilhouette = new Ship(ends.start, ends.finish, true);
+            p.shipSilhouette.meet(criteria(p.ships));
           }
           p.noStroke();
         }
@@ -185,21 +185,31 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
         // resolve mouse click event
         p.handleClick = function(I, J) {
           if (!ingame) {
-            // select ends of the future ship
-            if (p.shipCreation.length < 2) {
+            if (p.shipCreation.length === 0) {
               p.shipCreation.push([I, J]);
               p.silhouette = true;
-            }
-
-            // create the actual ship
-            if (p.shipCreation.length >= 2) {
+            } else
+            // select ends of the future ship
+            if (p.shipCreation.length === 1 && p.shipSilhouette.meetsCriteria) {
+              p.shipCreation.push([I, J]);
               p.silhouette = false;
 
+              // create the actual ship
               let ends = p.matchEnds(p.shipCreation);
-
               p.ships.push(new Ship(ends.start, ends.finish));
               p.shipCreation = [];
             }
+          }
+          else if (debugMode) {
+            p.shoot(I, J);
+          }
+      }
+
+        p.keyPressed = function(event) {
+          if (event.keyCode === 32) {
+            p.shipCreation = [];
+            p.shipSilhouette = null;
+            p.silhouette = false;
           }
         }
 
@@ -264,7 +274,7 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
 
           // check if hit a ship
           p.ships.forEach((ship, i, arr) => {
-            let eff = ship.check(x * SIZE + 1, y * SIZE + 1);
+            let eff = ship.shoot(x * SIZE + 1, y * SIZE + 1);
             console.log('check for ' + i + 'th ship. effect: ');
             console.log(eff);
             if (eff.hit) {
@@ -347,7 +357,7 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
                   break;
 
                 case GAPCELL: // a gap
-                  p.fill(6, 167, 109);
+                  p.fill(12, 103, 136);
                   p.noStroke();
                   p.rect(i * SIZE + 1, j * SIZE + 1, SIZE - 1, SIZE - 1);
                   break;

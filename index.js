@@ -10,12 +10,15 @@ var resp = {};
 
 var timeout = require('connect-timeout');
 
-app.use(timeout(1000 * 60 * 20));
+var time = require('express-timestamp');
+
+app.use(time.init);
+
+app.use(timeout(1000 * 60 * 2));
 app.use(haltOnTimedout);
 
 function haltOnTimedout(req, res, next) {
   if (!req.timedout) next();
-  console.log('timeout');
 }
 
 // parse application/x-www-form-urlencoded
@@ -54,23 +57,23 @@ app.post('/games', function(req, res, next) {
 
   switch (r.type) {
     case REQ_IN:
-      reqIn(r.query, res);
+      reqIn(req, res);
       break;
 
     case REQ_OUT:
-      reqOut(r.query, res);
+      reqOut(req, res);
       break;
 
     case RES_IN:
-      resIn(r.query, res);
+      resIn(req, res);
       break;
 
     case RES_OUT:
-      resOut(r.query, res);
+      resOut(req, res);
       break;
 
     case CLEAR:
-      clear(r.query, res);
+      clear(req, res);
       break;
 
     case NEW_GAME:
@@ -85,8 +88,9 @@ app.post('/games', function(req, res, next) {
 // player waiting for response
 // wait for hit info and get it
 function resOut(req, res) {
-  let id = req.id;
-  let name = req.name;
+  let query = req.body.query;
+  let id = query.id;
+  let name = query.name;
 
   console.log('player ' + name.slice(8) + ' waiting for response');
 
@@ -109,13 +113,16 @@ function resOut(req, res) {
           else {
 
             // Repeat without the check (validation)
-            let t = setInterval(function() {
+            setInterval(function() {
               play.getGame(id).then((r) => {
 
                 _endResponse(id, name, res, r).then(r => {
                   if (r) {
-                    clearInterval(t);
+                    clearInterval(this);
                     return;
+                  }
+                  if (req.timestamp - Date.now() > 1000 * 60 * 2) {
+                    clearInterval(this);
                   }
                 })
               })
@@ -171,11 +178,13 @@ function _endResponse(id, name, res, r) {
 
 // player sending a response
 function resIn(req, res) {
-  let id = req.id;
-  let name = req.name;
-  let hit = req.hit;
-  let kill = req.kill;
-  let win = req.win;
+  let query = req.body.query;
+
+  let id = query.id;
+  let name = query.name;
+  let hit = query.hit;
+  let kill = query.kill;
+  let win = query.win;
 
   console.log('player ' + name.slice(8) + ' sending a response');
 
@@ -216,10 +225,11 @@ function resIn(req, res) {
 
 // Shoot a tile (send a request)
 function reqIn(req, res) {
-  let id = req.id;
-  let name = req.name;
-  let x = req.x;
-  let y = req.y;
+  let query = req.body.query;
+  let id = query.id;
+  let name = query.name;
+  let x = query.x;
+  let y = query.y;
 
   console.log('player ' + name.slice(8) + ' sending a request');
 
@@ -262,8 +272,9 @@ function reqIn(req, res) {
 // Wait for request and get it
 // (Get coordinates of the tile being shot)
 function reqOut(req, res) {
-  let id = req.id;
-  let name = req.name;
+  let query = req.body.query;
+  let id = query.id;
+  let name = query.name;
 
   console.log('player ' + name.slice(8) + ' waiting for request');
 
@@ -286,21 +297,16 @@ function reqOut(req, res) {
         }
 
         // Repeat without the check (validation)
-        let k = setInterval(function() {
-          console.log('Still there');
-        }, 5000)
         let t = setInterval(function() {
           play.getGame(id).then((r) => {
+            console.log('Still there');
 
             if (_endRequest(name, r, res)) {
-              console.log('_endreuet true');
-              console.log('Clearing interval t: ');
-              clearInterval(t);
-              console.log(t);
-              console.log('Clearing interval k: ');
-              clearInterval(k);
-              console.log(k);
+              clearInterval(this);
               return;
+            }
+            if (req.timestamp - Date.now() > 1000 * 60 * 2) {
+              clearInterval(this);
             }
           })
         }, 600)
@@ -335,19 +341,24 @@ function _endRequest(name, r, res) {
 // This one is necessary to make sure the enemy received the response
 // (Responses and requests are cleared on receiving responses)
 function clear(req, res) {
-  let id = req.id;
+  let id = req.body.query.id;
 
-  let t = setInterval(function() {
+  setInterval(function() {
 
     play.getGame(id).then(r => {
 
       if (r && !r.response) {
+        console.log('Clear Complete!');
         res.end('{"response": "done"}');
-        clearInterval(t);
+        clearInterval(this);
+      }
+      if (req.timestamp - Date.now() > 1000 * 60 * 2) {
+        clearInterval(this);
       }
     })
-
   }, 800)
+
+
 }
 
 

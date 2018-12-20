@@ -9,12 +9,15 @@
 <body>
 
      <button class="button start">Start</button>
-     <button class="button pass" onclick="javascript:pass()">Pass</button>
+     <!-- <button class="button pass" onclick="javascript:pass()">Pass</button> -->
   <div id="root">
     <div id="sk1">
-      <div class="nick" contenteditable="true"></div></div>
+      <div class="stats"><div class="nick" contenteditable="true"></div>
+      <div id="my-turn-indicator" class="turn-indicator"></div></div></div>
     <div id="sk2">
-      <div id="enemy" class="nick hidden"></div>
+      <div id="enemy" class="stats hidden">
+      <div class="nick"></div>
+      <div id="enemy-turn-indicator" class="turn-indicator"></div></div>
     </div>
     <div id="sk3" class="hidden"></div>
      <!-- onclick="javascript:stopProp()" -->

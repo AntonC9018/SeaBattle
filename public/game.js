@@ -74,6 +74,7 @@ function requestAwaitRes(i, j) {
         } else if (res.hit === false) { // it hit an empty space
           console.log('An empty space has been hit!');
           initiative = 1;
+          pass();
           enemyNavy.cells[i][j] = 1;
           resolve(res);
 
@@ -235,6 +236,7 @@ function _awaitReq() {
 function respond(message) {
   return new Promise(function(resolve, reject) {
     console.log('Sending a response');
+    console.log(message);
     let xhttp = new XMLHttpRequest();
 
     xhttp.onreadystatechange = function() {
@@ -277,6 +279,7 @@ function awaitReqRespond() {
         return;
       } else {
         initiative = 0;
+        pass();
         console.log('cycle ended!');
       }
 

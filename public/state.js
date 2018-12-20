@@ -145,3 +145,33 @@ var stateScreen = new p5(function(p) {
     }
   },
   document.getElementById('sk3'));
+
+function pass(i) {
+  if (i === undefined) i = initiative;
+
+  let colors = {
+    undefined: 'yellow',
+    0: 'green',
+    1: 'red'
+  }
+
+  let mydiv = document.getElementById('my-turn-indicator');
+
+  let duration = window.getComputedStyle(mydiv).webkitTransitionDuration;
+  duration = (duration.indexOf("ms")>-1) ? parseFloat(duration) : parseFloat(duration)*1000;
+  console.log(duration);
+
+  mydiv.style.backgroundColor = 'white';
+  setTimeout(() => mydiv.style.backgroundColor = colors[i], duration);
+
+  let enemydiv = document.getElementById('enemy-turn-indicator');
+  enemydiv.style.backgroundColor = 'white';
+  setTimeout(() => enemydiv.style.backgroundColor = colors[i === 0 ? 1 : 0], duration);
+}
+
+
+function ch(t) {
+  for(let u of document.querySelectorAll('.turn-indicator')) {
+    u.style.transition = `background-color ${t}ms ease`;
+  }
+}

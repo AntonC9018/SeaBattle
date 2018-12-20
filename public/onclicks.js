@@ -48,6 +48,9 @@ function start() {
   let enemy = document.getElementById('enemy');
   enemy.classList.remove(stateClasses[STATE_HIDDEN]);
 
+  this.removeEventListener('click', start);
+  this.classList.add('hidden');
+
   // create board for enemy navy and
   board();
 
@@ -62,7 +65,7 @@ function start() {
   el.setAttribute('contenteditable', 'false');
   nick = salt() + el.innerHTML;
 
-  this.removeEventListener('click', start);
+
   ingame = true; // change game state when button is clicked
 
   let xhttp = new XMLHttpRequest();
@@ -78,10 +81,13 @@ function start() {
         id = res.response.id;
         initiative = parseInt(res.response.initiative);
 
-        enemy.innerHTML = enemyName;
+        // enemy name container (.nick)
+        enemy.children[0].innerHTML = enemyName;
 
         // if go second, await request and then respond
         if (initiative === 1) awaitReqRespond();
+
+        pass()
 
         changeState(STATE_READY)
       }
